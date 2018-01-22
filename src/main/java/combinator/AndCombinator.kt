@@ -1,5 +1,7 @@
-package parsec
+package combinator
 
+import parser.Parser
+import parser.ParserResult
 import tools.Either
 
 class AndCombinator<T, out F, out S>(private val left: Parser<T, F>, private val right: Parser<T, S>) : Parser<T, Pair<F, S>>() {

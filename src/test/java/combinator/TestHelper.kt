@@ -1,4 +1,6 @@
-package parsec
+package combinator
+
+import parser.pChar
 
 val charA = pChar('A')
 val charB = pChar('B')

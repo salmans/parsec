@@ -1,5 +1,7 @@
-package parsec
+package combinator
 
+import parser.Parser
+import parser.ParserResult
 import tools.Either
 
 class OptionalCombinator<T, out R>(private val parser: Parser<T, R>) : Parser<T, R?>() {

@@ -1,4 +1,4 @@
-package parsec
+package parser
 
 import tools.Either
 

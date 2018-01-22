@@ -1,5 +1,8 @@
-package parsec
+package combinator
 
+import parser.Parser
+import parser.ParserResult
+import parser.plus
 import tools.Either
 
 class OrCombinator<T, out F, out S>(private val left: Parser<T, F>, private val right: Parser<T, S>) : Parser<T, Either<F, S>>() {

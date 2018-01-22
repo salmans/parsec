@@ -1,4 +1,4 @@
-package parsec
+package combinator
 
 import org.junit.Assert.*
 
