@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.github.salmans</groupId>
-    <artifactId>parsec</artifactId>
+    <artifactId>parsekt</artifactId>
     <version>0.1-SNAPSHOT</version>
 
     <properties>
