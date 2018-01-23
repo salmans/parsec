@@ -5,6 +5,14 @@ import kotlin.test.assertEquals
 
 class HelperKtTest {
     @Test
+    fun identity() {
+        run {
+            assertEquals(42, identity(42) )
+            assertEquals(10, identity(10) )
+        }
+    }
+
+    @Test
     fun compose() {
         run {
             val f1: (Int) -> Int = { x -> x + 1 }
