@@ -5,7 +5,7 @@ import org.junit.Test
 
 class ManyCombinatorTest {
     @Test
-    fun parse() {
+    fun many() {
         assertEquals(listOf('A'), many(charA)("AB".asSequence()).right()!!.first)
         assertEquals(listOf('A', 'A'), many(charA)("AABC".asSequence()).right()!!.first)
         assertEquals(listOf('A', 'A', 'A', 'A', 'A'), many(charA)("AAAAABC".asSequence()).right()!!.first)

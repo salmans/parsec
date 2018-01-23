@@ -5,7 +5,7 @@ import org.junit.Test
 
 class CharParserTest {
     @Test
-    fun parse() {
+    fun char() {
         assertEquals('A', charA("A".asSequence()).right()!!.first)
         assertEquals('A', charA("ABC".asSequence()).right()!!.first)
         assertEquals("Expecting 'A' but '' was found.", charA("".asSequence()).left()!!.message)

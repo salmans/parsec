@@ -5,7 +5,7 @@ import org.junit.Test
 
 class OptionalCombinatorTest {
     @Test
-    fun parse() {
+    fun optional() {
         assertEquals('A', optional(charA)("AB".asSequence()).right()!!.first)
         assertEquals(null, optional(charA)("B".asSequence()).right()!!.first)
         assertEquals('A', optional(optional(charA))("ABC".asSequence()).right()!!.first)
