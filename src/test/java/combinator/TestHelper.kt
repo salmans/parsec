@@ -1,14 +1,14 @@
 package combinator
 
-import parser.pChar
+import parser.token
 
-val charA = pChar('A')
-val charB = pChar('B')
-val charC = pChar('C')
-val charD = pChar('D')
-val charE = pChar('E')
-val charF = pChar('F')
-val charG = pChar('G')
-val charH = pChar('H')
-val charI = pChar('I')
-val charJ = pChar('J')
+val charA = token('A')
+val charB = token('B')
+val charC = token('C')
+val charD = token('D')
+val charE = token('E')
+val charF = token('F')
+val charG = token('G')
+val charH = token('H')
+val charI = token('I')
+val charJ = token('J')

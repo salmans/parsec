@@ -31,7 +31,7 @@ class UnexpectedTokenException : ParserException {
             "Expecting one of ${tokens.joinToString(",") { "'$it'" }} but '$found' was found."
         }
 
-    override fun combine(exception: ParserException) = when(exception) {
+    override fun combine(exception: ParserException) = when (exception) {
         is UnexpectedTokenException -> UnexpectedTokenException(this.tokens + exception.tokens, this.found)
         else -> super.combine(exception)
     }
@@ -44,3 +44,16 @@ typealias ParserResult<T, R> = Either<ParserException, Pair<R, Sequence<T>>>
 abstract class Parser<T, out R> {
     abstract fun parse(tokens: Sequence<T>): ParserResult<T, R>
 }
+
+class Token<T>(private val token: T) : Parser<T, T>() {
+    override fun parse(tokens: Sequence<T>): ParserResult<T, T> {
+        return if (tokens.firstOrNull() == token)
+            Either.right(token to tokens.drop(1))
+        else {
+            val found = if (tokens.firstOrNull() != null) tokens.firstOrNull().toString() else END_OF_SOURCE
+            Either.left(UnexpectedTokenException(token.toString(), found = found))
+        }
+    }
+}
+
+fun <T> token(token: T) = Token(token)
