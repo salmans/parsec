@@ -1,6 +1,7 @@
 package parser
 
 import tools.Either
+import tools.identity
 
 const val END_OF_SOURCE = ""
 
@@ -40,6 +41,11 @@ class UnexpectedTokenException : ParserException {
 operator fun ParserException.plus(exception: ParserException) = this.combine(exception)
 
 typealias ParserResult<T, R> = Either<ParserException, Pair<R, Sequence<T>>>
+
+fun <T, R, S> ParserResult<T, R>.mapResult(transform: (R) -> S) = when(this) {
+    is Either.Left -> Either.Left(this.value)
+    is Either.Right -> Either.Right(transform(this.value.first) to this.value.second)
+}
 
 typealias Parser<T, R> = (tokens: Sequence<T>) -> ParserResult<T, R>
 
