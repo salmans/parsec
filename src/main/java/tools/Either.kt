@@ -29,8 +29,8 @@ sealed class Either<out A, out B> private constructor() {
         else -> null
     }
 
-    fun <C, D> either(left: (A) -> C, right: (B) -> D): Either<C, D> = when (this) {
-        is Either.Left -> Either.Left(left(value))
-        is Either.Right -> Either.Right(right(value))
+    fun <C> either(left: (A) -> C, right: (B) -> C): C = when (this) {
+        is Either.Left -> left(value)
+        is Either.Right -> right(value)
     }
 }
