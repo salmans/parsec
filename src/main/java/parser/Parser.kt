@@ -7,7 +7,7 @@ const val END_OF_SOURCE = ""
 
 open class ParserException(message: String?) : Exception(message) {
     open fun combine(exception: ParserException): ParserException {
-        return ParserException("${this.message}\n${exception.message}")
+        return this
     }
 }
 

@@ -1,8 +1,26 @@
 package combinator
 
 import parser.Parser
+import parser.ParserException
+import parser.ParserResult
 import parser.plus
 import tools.Either
+
+// TODO make sure this is doing the right thing:
+fun <T, R> choice(parser: List<Parser<T, R>>) = { tokens: Sequence<T> ->
+    var exception: ParserException? = null
+    var successful: ParserResult<T, R>? = null
+    for (it in parser) {
+        val result = it(tokens)
+        if (result is Either.Left) {
+            exception = exception?.combine(result.value) ?: result.value
+        } else if (result is Either.Right) {
+            successful = result
+            break
+        }
+    }
+    if (successful != null) successful else Either.left(exception)
+}
 
 fun <T, R> many(parser: Parser<T, R>) = { tokens: Sequence<T> ->
     var result = emptyList<R>()
@@ -36,7 +54,7 @@ infix fun <T, F, S> Parser<T, F>.or(parser: Parser<T, S>) = { tokens: Sequence<T
     when (firstResult) {
         is Either.Left -> {
             val secondResult = parser(tokens)
-            when(secondResult) {
+            when (secondResult) {
                 is Either.Left -> Either.left(firstResult.value + secondResult.value)
                 is Either.Right -> {
                     val (sr, sts) = secondResult.value
