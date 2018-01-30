@@ -51,6 +51,11 @@ fun <T, R, S> ParserResult<T, R>.mapResult(transform: (R) -> S): ParserResult<T,
 
 typealias Parser<T, R> = (tokens: Sequence<T>) -> ParserResult<T, R>
 
+/**
+ * Hand in the result without consuming anything (monadic return).
+ */
+fun <T, R> give(value: R) = { tokens: Sequence<T> -> Either.right(value) to tokens }
+
 fun <T> token(token: T) = { tokens: Sequence<T> ->
     if (tokens.firstOrNull() == token)
         Either.right(token) to tokens.drop(1)

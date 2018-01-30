@@ -7,21 +7,21 @@ import tools.Either
  * Implements mplus (<|>): it returns the result of the first parser if it runs successfully.
  * It returns the result of the second parser if the first parser fails without consuming any tokens.
  */
-infix fun <T, F, S> Parser<T, F>.or(parser: Parser<T, S>) = { tokens: Sequence<T> ->
+infix fun <T, R> Parser<T, R>.or(parser: Parser<T, R>) = { tokens: Sequence<T> ->
     val (fr, fts) = this(tokens)
     when (fr) {
         is Either.Left -> {
             if (fts == tokens) {
                 val (sr, sts) = parser(tokens)
                 when (sr) {
-                    is Either.Left -> Either.left(fr.value + sr.value) to tokens
-                    is Either.Right -> Either.right(sr) to sts
+                    is Either.Left -> Either.Left(fr.value + sr.value) to tokens
+                    is Either.Right -> sr to sts
                 }
             } else {
                 fr to fts
             }
         }
-        is Either.Right -> Either.right(Either.left(fr.value)) to fts
+        is Either.Right -> Either.right(fr.value) to fts
     }
 }
 
@@ -29,7 +29,7 @@ infix fun <T, F, S> Parser<T, F>.or(parser: Parser<T, S>) = { tokens: Sequence<T
  * Applies `parser` without consuming the input. It fails if `parser` does.
  */
 fun <T, R> lookAhead(parser: Parser<T, R>) = { tokens: Sequence<T> ->
-    parser(tokens).let { it.first to tokens }
+    parser(tokens).first to tokens
 }
 
 /**
@@ -45,8 +45,8 @@ fun <T, R> attempt(parser: Parser<T, R>) = { tokens: Sequence<T> ->
 }
 
 /**
- * Applies `parser` until it cannot be applied any more and returns the result in a list.
- * It fails if `parser` consumes the tokens and fails.
+ * Applies `parser` many times until it cannot be applied any more and returns the result in a list.
+ * It fails if `parser` fails after consuming tokens.
  */
 fun <T, R> many(parser: Parser<T, R>) = { tokens: Sequence<T> ->
     var exception: ParserException? = null
@@ -75,10 +75,25 @@ fun <T, R> many(parser: Parser<T, R>) = { tokens: Sequence<T> ->
 }
 
 /**
- * Like `many`, applies `parser` until it cannot be applied any more but discards the result.
+ * Applies `parser` one or more times until it cannot be applied any more and returns the result in a list.
+ * It fails if `parser` fails after consuming tokens.
+ */
+fun <T, R> many1(parser: Parser<T, R>) = { tokens: Sequence<T> ->
+    (parser and many(parser))(tokens).mapResult { listOf(it.first) + it.second }
+}
+
+/**
+ * Applies `parser` many times until it cannot be applied any more, discarding the result.
  */
 fun <T, R> skipMany(parser: Parser<T, R>) = { tokens: Sequence<T> ->
     many(parser)(tokens).mapResult { Unit }
+}
+
+/**
+ * Applies `parser` one or many times until it cannot be applied any more, discarding the result.
+ */
+fun <T, R> skipMany1(parser: Parser<T, R>) = { tokens: Sequence<T> ->
+    (parser and many(parser))(tokens).mapResult { Unit }
 }
 
 /**
@@ -183,6 +198,18 @@ fun <T, R> option(default: R, parser: Parser<T, R>) = { tokens: Sequence<T> ->
     }
 }
 
+fun <T, R> sepBy1(parser: Parser<T, R>, sep: Parser<T, R>) = { tokens: Sequence<T> ->
+    (parser and many(sep right parser))(tokens).mapResult {
+        if(it.first != null) {
+            listOf(it.first) + it.second
+        } else {
+            emptyList()
+        }
+    }
+}
+
+fun <T, R> sepBy(parser: Parser<T, R>, sep: Parser<T, R>) = sepBy1(parser, sep) or give(emptyList())
+
 infix fun <T, F, S> Parser<T, F>.and(parser: Parser<T, S>): Parser<T, Pair<F, S>> = { tokens: Sequence<T> ->
     val firstParsed = this(tokens)
     val (fr, fts) = firstParsed
@@ -210,5 +237,23 @@ infix fun <T, F, S> Parser<T, F>.left(parser: Parser<T, S>): Parser<T, F> = { to
 infix fun <T, F, S> Parser<T, F>.right(parser: Parser<T, S>): Parser<T, S> = { tokens: Sequence<T> ->
     (this and parser)(tokens).let {
         it.mapResult { it.second }
+    }
+}
+
+infix fun <T, F, S> Parser<T, F>.either(parser: Parser<T, S>) = { tokens: Sequence<T> ->
+    val (fr, fts) = this(tokens)
+    when (fr) {
+        is Either.Left -> {
+            if (fts == tokens) {
+                val (sr, sts) = parser(tokens)
+                when (sr) {
+                    is Either.Left -> Either.left(fr.value + sr.value) to tokens
+                    is Either.Right -> Either.right(sr) to sts
+                }
+            } else {
+                fr to fts
+            }
+        }
+        is Either.Right -> Either.right(Either.left(fr.value)) to fts
     }
 }

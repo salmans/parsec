@@ -32,12 +32,30 @@ class CombinatorTest {
     }
 
     @Test
+    fun many1() {
+        assertEquals(listOf('A') to listOf('B'), success("AB".asSequence(), many1(charA)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("AABC".asSequence(), many1(charA)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("AAAAABC".asSequence(), many1(charA)))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), many1(charA)))
+        assertEquals("Expecting 'B' but 'C' was found.", failure("ABAC".asSequence(), many1(charA and charB)))
+    }
+
+    @Test
     fun skipMany() {
         assertEquals(Unit to listOf('B'), success("AB".asSequence(), skipMany(charA)))
         assertEquals(Unit to "BC".toList(), success("AABC".asSequence(), skipMany(charA)))
         assertEquals(Unit to "BC".toList(), success("AAAAABC".asSequence(), skipMany(charA)))
         assertEquals(Unit to "BC".toList(), success("BC".asSequence(), skipMany(charA)))
         assertEquals("Expecting 'B' but 'C' was found.", failure("ABAC".asSequence(), skipMany(charA and charB)))
+    }
+
+    @Test
+    fun skipMany1() {
+        assertEquals(Unit to listOf('B'), success("AB".asSequence(), skipMany1(charA)))
+        assertEquals(Unit to "BC".toList(), success("AABC".asSequence(), skipMany1(charA)))
+        assertEquals(Unit to "BC".toList(), success("AAAAABC".asSequence(), skipMany1(charA)))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), skipMany1(charA)))
+        assertEquals("Expecting 'B' but 'C' was found.", failure("ABAC".asSequence(), skipMany1(charA and charB)))
     }
 
     @Test
@@ -125,14 +143,48 @@ class CombinatorTest {
     }
 
     @Test
+    fun sepBy1() {
+        assertEquals(listOf('A') to listOf('B'), success("AB".asSequence(), sepBy1(charA, charC)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("ACABC".asSequence(), sepBy1(charA, charC)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACABC".asSequence(), sepBy1(charA, charC)))
+        assertEquals(listOf('A' to 'B') to "AC".toList(), success("ABAC".asSequence(), sepBy1(charA and charB, charC)))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), sepBy1(charA, charC)))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("ACB".asSequence(), sepBy1(charA, charC)))
+        assertEquals("Expecting 'C' but 'A' was found.", failure("ABAC".asSequence(), sepBy1(charA, charB and charC)))
+    }
+
+    @Test
+    fun sepBy() {
+        assertEquals(listOf('A') to listOf('B'), success("AB".asSequence(), sepBy(charA, charC)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("ACABC".asSequence(), sepBy(charA, charC)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACABC".asSequence(), sepBy(charA, charC)))
+        assertEquals(listOf('A' to 'B') to "AC".toList(), success("ABAC".asSequence(), sepBy(charA and charB, charC)))
+        assertEquals(emptyList<Char>() to "BC".toList(), success("BC".asSequence(), sepBy(charA, charC)))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("ACB".asSequence(), sepBy(charA, charC)))
+        assertEquals("Expecting 'C' but 'A' was found.", failure("ABAC".asSequence(), sepBy(charA, charB and charC)))
+    }
+
+    @Test
     fun or() {
-        assertEquals(Either.left('A') to listOf('B'), success("AB".asSequence(),charA or charB))
-        assertEquals(Either.right('B') to listOf('C'), success("BC".asSequence(),charA or charB))
-        assertEquals(Either.left('A') to emptyList<Char>(), success("A".asSequence(), charA or charB))
-        assertEquals(Either.right('A') to emptyList<Char>(), success("A".asSequence(),charB or charA))
-        assertEquals(Either.right('C') to emptyList<Char>(), success("C".asSequence(),charA or charB or charC))
+        assertEquals('A' to listOf('B'), success("AB".asSequence(),charA or charB))
+        assertEquals('B' to listOf('C'), success("BC".asSequence(),charA or charB))
+        assertEquals('A' to emptyList<Char>(), success("A".asSequence(), charA or charB))
+        assertEquals('A' to emptyList<Char>(), success("A".asSequence(),charB or charA))
+        assertEquals('C' to emptyList<Char>(), success("C".asSequence(),charA or charB or charC))
         assertEquals("Expecting one of 'A','B' but '' was found.", failure("".asSequence(), charA or charB))
         assertEquals("Expecting 'C' but 'B' was found.", failure("AB".asSequence(), (charA and charC) or charB))
         assertEquals("Expecting one of 'A','B' but 'C' was found.", failure("C".asSequence(), charA or charB))
+    }
+
+    @Test
+    fun either() {
+        assertEquals(Either.left('A') to listOf('B'), success("AB".asSequence(),charA either charB))
+        assertEquals(Either.right('B') to listOf('C'), success("BC".asSequence(),charA either charB))
+        assertEquals(Either.left('A') to emptyList<Char>(), success("A".asSequence(), charA either charB))
+        assertEquals(Either.right('A') to emptyList<Char>(), success("A".asSequence(),charB either charA))
+        assertEquals(Either.right('C') to emptyList<Char>(), success("C".asSequence(),charA either charB either charC))
+        assertEquals("Expecting one of 'A','B' but '' was found.", failure("".asSequence(), charA either charB))
+        assertEquals("Expecting 'C' but 'B' was found.", failure("AB".asSequence(), (charA and charC) either charB))
+        assertEquals("Expecting one of 'A','B' but 'C' was found.", failure("C".asSequence(), charA either charB))
     }
 }
