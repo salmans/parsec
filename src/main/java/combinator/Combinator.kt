@@ -198,9 +198,12 @@ fun <T, R> option(default: R, parser: Parser<T, R>) = { tokens: Sequence<T> ->
     }
 }
 
-fun <T, R> sepBy1(parser: Parser<T, R>, sep: Parser<T, R>) = { tokens: Sequence<T> ->
+/**
+ * Parses `parser` one or many times, separated by `sep` and returns the results of parsing `parser` in a list.
+ */
+fun <T, R, S> sepBy1(parser: Parser<T, R>, sep: Parser<T, S>) = { tokens: Sequence<T> ->
     (parser and many(sep right parser))(tokens).mapResult {
-        if(it.first != null) {
+        if (it.first != null) {
             listOf(it.first) + it.second
         } else {
             emptyList()
@@ -208,7 +211,55 @@ fun <T, R> sepBy1(parser: Parser<T, R>, sep: Parser<T, R>) = { tokens: Sequence<
     }
 }
 
-fun <T, R> sepBy(parser: Parser<T, R>, sep: Parser<T, R>) = sepBy1(parser, sep) or give(emptyList())
+/**
+ * Parses `parser` zero or many times, separated by `sep` and returns the results of parsing `parser` in a list.
+ */
+fun <T, R, S> sepBy(parser: Parser<T, R>, sep: Parser<T, S>) = sepBy1(parser, sep) or give(emptyList())
+
+/**
+ * Parses `parser` one or many times, separated and ended by `sep` and returns the results of parsing `parser` in a list.
+ */
+fun <T, R, S> endBy1(parser: Parser<T, R>, sep: Parser<T, S>) = { tokens: Sequence<T> ->
+    many1(parser and sep)(tokens).mapResult {
+        it.map { it.first }
+    }
+}
+
+/**
+ * Parses `parser` zero or many times, separated and ended by `sep` and returns the results of parsing `parser` in a list.
+ */
+fun <T, R, S> endBy(parser: Parser<T, R>, sep: Parser<T, S>) = { tokens: Sequence<T> ->
+    many(parser and sep)(tokens).mapResult {
+        it.map { it.first }
+    }
+}
+
+/**
+ * Parses `parser` one or many times, separated and ended by `sep` and returns the results of parsing `parser` in a list.
+ * do{ x <- p
+; do{ sep
+; xs <- sepEndBy p sep
+; return (x:xs)
+}
+<|> return [x]
+}
+ */
+fun <T, R, S> sepEndBy1(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List<R>> = { tokens: Sequence<T> ->
+    // Kotlin compiler isn't handling intertwined lambdas nicely; it needs explicit type information:
+    fun combine(x: R, xs: List<R>): Parser<T, List<R>> {
+        return give(listOf(x) + xs)
+    }
+    fun help(x: R): Parser<T, List<R>> {
+        return sep right sepEndBy(parser, sep) bind { xs: List<R> -> combine(x, xs) }
+    }
+    (parser bind {x: R -> help(x) or give(listOf(x))})(tokens)
+}
+
+/**
+ * Parses `parser` zero or many times, separated and ended by `sep` and returns the results of parsing `parser` in a list.
+ */
+fun <T, R, S> sepEndBy(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List<R>> = sepEndBy1(parser, sep) or give(emptyList())
+
 
 infix fun <T, F, S> Parser<T, F>.and(parser: Parser<T, S>): Parser<T, Pair<F, S>> = { tokens: Sequence<T> ->
     val firstParsed = this(tokens)
@@ -227,6 +278,23 @@ infix fun <T, F, S> Parser<T, F>.and(parser: Parser<T, S>): Parser<T, Pair<F, S>
         }
     }
 }
+
+
+infix fun <T, F, S> Parser<T, F>.bind(parser: (F) -> Parser<T, S>): Parser<T, S> = { tokens: Sequence<T> ->
+    val (r, ts) = this(tokens)
+    when(r) {
+        is Either.Left -> r to ts
+        is Either.Right -> parser(r.value)(ts)
+    }
+}
+
+//fun <T, F, S> bind(base: Parser<T, F>, parser: (F) -> Parser<T, S>): Parser<T, S> = { tokens: Sequence<T> ->
+//    val (r, ts) = base(tokens)
+//    when (r) {
+//        is Either.Left -> r to ts
+//        is Either.Right -> parser(r.value)(ts)
+//    }
+//}
 
 infix fun <T, F, S> Parser<T, F>.left(parser: Parser<T, S>): Parser<T, F> = { tokens: Sequence<T> ->
     (this and parser)(tokens).let {

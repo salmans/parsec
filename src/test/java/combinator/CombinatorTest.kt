@@ -144,6 +144,7 @@ class CombinatorTest {
 
     @Test
     fun sepBy1() {
+        assertEquals(listOf('A') to emptyList<Char>(), success("A".asSequence(), sepBy1(charA, charC)))
         assertEquals(listOf('A') to listOf('B'), success("AB".asSequence(), sepBy1(charA, charC)))
         assertEquals(listOf('A', 'A') to "BC".toList(), success("ACABC".asSequence(), sepBy1(charA, charC)))
         assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACABC".asSequence(), sepBy1(charA, charC)))
@@ -155,6 +156,7 @@ class CombinatorTest {
 
     @Test
     fun sepBy() {
+        assertEquals(listOf('A') to emptyList<Char>(), success("A".asSequence(), sepBy(charA, charC)))
         assertEquals(listOf('A') to listOf('B'), success("AB".asSequence(), sepBy(charA, charC)))
         assertEquals(listOf('A', 'A') to "BC".toList(), success("ACABC".asSequence(), sepBy(charA, charC)))
         assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACABC".asSequence(), sepBy(charA, charC)))
@@ -162,6 +164,54 @@ class CombinatorTest {
         assertEquals(emptyList<Char>() to "BC".toList(), success("BC".asSequence(), sepBy(charA, charC)))
         assertEquals("Expecting 'A' but 'B' was found.", failure("ACB".asSequence(), sepBy(charA, charC)))
         assertEquals("Expecting 'C' but 'A' was found.", failure("ABAC".asSequence(), sepBy(charA, charB and charC)))
+    }
+
+    @Test
+    fun endBy1() {
+        assertEquals(listOf('A') to listOf('B'), success("ACB".asSequence(), endBy1(charA, charC)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("ACACBC".asSequence(), endBy1(charA, charC)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACACBC".asSequence(), endBy1(charA, charC)))
+        assertEquals("Expecting 'B' but 'C' was found.", failure("ABCAC".asSequence(), endBy1(charA and charB, charC)))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), endBy1(charA, charC)))
+        assertEquals("Expecting 'C' but 'A' was found.", failure("ABAC".asSequence(), endBy1(charA, charB and charC)))
+    }
+
+    @Test
+    fun sepEndBy1() {
+        assertEquals(listOf('A') to listOf('B'), success("ACB".asSequence(), sepEndBy1(charA, charC)))
+        assertEquals(listOf('A') to listOf('B'), success("AB".asSequence(), sepEndBy1(charA, charC)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("ACACBC".asSequence(), sepEndBy1(charA, charC)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("ACABC".asSequence(), sepEndBy1(charA, charC)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACACBC".asSequence(), sepEndBy1(charA, charC)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACABC".asSequence(), sepEndBy1(charA, charC)))
+        assertEquals("Expecting 'B' but 'C' was found.", failure("ABCAC".asSequence(), sepEndBy1(charA and charB, charC)))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), sepEndBy1(charA, charC)))
+        assertEquals("Expecting 'C' but 'A' was found.", failure("ABAC".asSequence(), sepEndBy1(charA, charB and charC)))
+    }
+
+    @Test
+    fun sepEndBy() {
+        assertEquals(listOf('A') to listOf('B'), success("ACB".asSequence(), sepEndBy(charA, charC)))
+        assertEquals(listOf('A') to listOf('B'), success("AB".asSequence(), sepEndBy(charA, charC)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("ACACBC".asSequence(), sepEndBy(charA, charC)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("ACABC".asSequence(), sepEndBy(charA, charC)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACACBC".asSequence(), sepEndBy(charA, charC)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACABC".asSequence(), sepEndBy(charA, charC)))
+        assertEquals(emptyList<Char>() to "BC".toList(), success("BC".asSequence(), sepEndBy(charA, charC)))
+        assertEquals(emptyList<Char>() to "CBC".toList(), success("CBC".asSequence(), sepEndBy(charA, charC)))
+        assertEquals("Expecting 'B' but 'C' was found.", failure("ABCAC".asSequence(), sepEndBy(charA and charB, charC)))
+        assertEquals("Expecting 'C' but 'A' was found.", failure("ABAC".asSequence(), sepEndBy(charA, charB and charC)))
+    }
+
+    @Test
+    fun endBy() {
+        assertEquals(listOf('A') to listOf('B'), success("ACB".asSequence(), endBy(charA, charC)))
+        assertEquals(listOf('A', 'A') to "BC".toList(), success("ACACBC".asSequence(), endBy(charA, charC)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("ACACACACACBC".asSequence(), endBy(charA, charC)))
+        assertEquals(emptyList<Char>() to "BC".toList(), success("BC".asSequence(), endBy(charA, charC)))
+        assertEquals(emptyList<Char>() to "CBC".toList(), success("CBC".asSequence(), endBy(charA, charC)))
+        assertEquals("Expecting 'B' but 'C' was found.", failure("ABCAC".asSequence(), endBy(charA and charB, charC)))
+        assertEquals("Expecting 'C' but 'A' was found.", failure("ABAC".asSequence(), endBy(charA, charB and charC)))
     }
 
     @Test
