@@ -236,23 +236,17 @@ fun <T, R, S> endBy(parser: Parser<T, R>, sep: Parser<T, S>) = { tokens: Sequenc
 
 /**
  * Parses `parser` one or many times, separated and ended by `sep` and returns the results of parsing `parser` in a list.
- * do{ x <- p
-; do{ sep
-; xs <- sepEndBy p sep
-; return (x:xs)
-}
-<|> return [x]
-}
  */
 fun <T, R, S> sepEndBy1(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List<R>> = { tokens: Sequence<T> ->
     // Kotlin compiler isn't handling intertwined lambdas nicely; it needs explicit type information:
     fun combine(x: R, xs: List<R>): Parser<T, List<R>> {
         return give(listOf(x) + xs)
     }
+
     fun help(x: R): Parser<T, List<R>> {
         return sep right sepEndBy(parser, sep) bind { xs: List<R> -> combine(x, xs) }
     }
-    (parser bind {x: R -> help(x) or give(listOf(x))})(tokens)
+    (parser bind { x: R -> help(x) or give(listOf(x)) })(tokens)
 }
 
 /**
@@ -260,6 +254,50 @@ fun <T, R, S> sepEndBy1(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List
  */
 fun <T, R, S> sepEndBy(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List<R>> = sepEndBy1(parser, sep) or give(emptyList())
 
+/**
+ * Applies `parser` one or more time, separated by `operator` and applies left associative `operator` to chain the result.
+ * Use this function to eliminate left recursion.
+ */
+fun <T, R> chainl1(parser: Parser<T, R>, operator: Parser<T, (R, R) -> R>): Parser<T, R> = { tokens: Sequence<T> ->
+    fun rest(x: R): Parser<T, R> {
+        return (operator bind { f -> parser bind { y -> rest(f(x, y)) } }) or give(x)
+    }
+    (parser bind { x -> rest(x) })(tokens)
+}
+
+/**
+ * Applies `parser` zero or more time, separated by `operator` and applies left associative `operator` to chain the result.
+ * It returns the default value `default` if `parser` cannot be applied.
+ * Use this function to eliminate left recursion.
+ */
+fun <T, R> chainl(parser: Parser<T, R>, operator: Parser<T, (R, R) -> R>, default: R): Parser<T, R> = chainl1(parser, operator) or give(default)
+
+/**
+ * Helper for chainr1
+ */
+private fun <T, R> chainrScan(parser: Parser<T, R>, operator: Parser<T, (R, R) -> R>): Parser<T, R> {
+    return (parser bind { x -> chainrRest(parser, operator, x) })
+}
+
+/**
+ * Helper for chainr1
+ */
+private fun <T, R> chainrRest(parser: Parser<T, R>, operator: Parser<T, (R, R) -> R>, x: R): Parser<T, R> {
+    return (operator bind { f -> chainrScan(parser, operator) bind { y -> chainrRest(parser, operator, f(x, y)) } }) or give(x)
+}
+
+/**
+ * Applies `parser` one or more time, separated by `operator` and applies right associative `operator` to chain the result.
+ * Use this function to eliminate left recursion.
+ */
+fun <T, R> chainr1(parser: Parser<T, R>, operator: Parser<T, (R, R) -> R>): Parser<T, R> = chainrScan(parser, operator)
+
+/**
+ * Applies `parser` zero or more time, separated by `operator` and applies right associative `operator` to chain the result.
+ * It returns the default value `default` if `parser` cannot be applied.
+ * Use this function to eliminate left recursion.
+ */
+fun <T, R> chainr(parser: Parser<T, R>, operator: Parser<T, (R, R) -> R>, default: R): Parser<T, R> = chainr1(parser, operator) or give(default)
 
 infix fun <T, F, S> Parser<T, F>.and(parser: Parser<T, S>): Parser<T, Pair<F, S>> = { tokens: Sequence<T> ->
     val firstParsed = this(tokens)
@@ -282,19 +320,11 @@ infix fun <T, F, S> Parser<T, F>.and(parser: Parser<T, S>): Parser<T, Pair<F, S>
 
 infix fun <T, F, S> Parser<T, F>.bind(parser: (F) -> Parser<T, S>): Parser<T, S> = { tokens: Sequence<T> ->
     val (r, ts) = this(tokens)
-    when(r) {
+    when (r) {
         is Either.Left -> r to ts
         is Either.Right -> parser(r.value)(ts)
     }
 }
-
-//fun <T, F, S> bind(base: Parser<T, F>, parser: (F) -> Parser<T, S>): Parser<T, S> = { tokens: Sequence<T> ->
-//    val (r, ts) = base(tokens)
-//    when (r) {
-//        is Either.Left -> r to ts
-//        is Either.Right -> parser(r.value)(ts)
-//    }
-//}
 
 infix fun <T, F, S> Parser<T, F>.left(parser: Parser<T, S>): Parser<T, F> = { tokens: Sequence<T> ->
     (this and parser)(tokens).let {

@@ -3,6 +3,7 @@ package combinator
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import parser.Parser
+import parser.give
 import tools.Either
 
 class CombinatorTest {
@@ -87,7 +88,7 @@ class CombinatorTest {
 
     @Test
     fun and() {
-        assertEquals(('A' to 'B') to emptyList<Char>(), success("AB".asSequence(),charA and charB))
+        assertEquals(('A' to 'B') to emptyList<Char>(), success("AB".asSequence(), charA and charB))
         assertEquals(('A' to 'B') to listOf('C'), success("ABC".asSequence(), charA and charB))
         assertEquals((('A' to 'B') to 'C') to emptyList<Char>(), success("ABC".asSequence(), charA and charB and charC))
         assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(), charA and charB))
@@ -97,9 +98,9 @@ class CombinatorTest {
 
     @Test
     fun left() {
-        assertEquals('A' to emptyList<Char>(), success("AB".asSequence(),charA left charB))
-        assertEquals('A' to listOf('C'), success("ABC".asSequence(),charA left charB))
-        assertEquals('A' to emptyList<Char>(), success("ABC".asSequence(),charA left charB left charC))
+        assertEquals('A' to emptyList<Char>(), success("AB".asSequence(), charA left charB))
+        assertEquals('A' to listOf('C'), success("ABC".asSequence(), charA left charB))
+        assertEquals('A' to emptyList<Char>(), success("ABC".asSequence(), charA left charB left charC))
         assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(), charA left charB))
         assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), charA left charB))
         assertEquals("Expecting 'B' but 'C' was found.", failure("AC".asSequence(), charA left charB))
@@ -110,9 +111,9 @@ class CombinatorTest {
         assertEquals('B' to emptyList<Char>(), success("AB".asSequence(), charA right charB))
         assertEquals('B' to listOf('C'), success("ABC".asSequence(), charA right charB))
         assertEquals('C' to emptyList<Char>(), success("ABC".asSequence(), charA right charB right charC))
-        assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(),charA right charB))
-        assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(),charA right charB))
-        assertEquals("Expecting 'B' but 'C' was found.", failure("AC".asSequence(),charA right charB))
+        assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(), charA right charB))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), charA right charB))
+        assertEquals("Expecting 'B' but 'C' was found.", failure("AC".asSequence(), charA right charB))
     }
 
     @Test
@@ -215,12 +216,89 @@ class CombinatorTest {
     }
 
     @Test
+    fun chainl1() {
+        assertEquals('A' to emptyList<Char>(), success("A".asSequence(), chainl1(charA, give({ _, x -> x }))))
+        assertEquals('B' to listOf('C'), success("ABC".asSequence(), chainl1(charA or charB, give({ _, x -> x }))))
+        assertEquals('C' to emptyList<Char>(), success("ABC".asSequence(), chainl1(charA or charB or charC, give({ _, x -> x }))))
+        assertEquals('b' to listOf('C'), success("BAAAABC".asSequence(), chainl1(charA or charB, give({ x, _ -> x.toLowerCase() }))))
+        assertEquals(3 to emptyList<Char>(), success("0+1+2".asSequence(), chainl1(pNum(), pOp())))
+        assertEquals(-7 to emptyList<Char>(), success("0+1-2+3-9".asSequence(), chainl1(pNum(), pOp())))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("BA".asSequence(), chainl1(charA, give({ _, x -> x }))))
+    }
+
+    @Test
+    fun chainl() {
+        assertEquals('A' to emptyList<Char>(), success("A".asSequence(), chainl(charA, give({ _, x -> x }), 'X')))
+        assertEquals('B' to listOf('C'), success("ABC".asSequence(), chainl(charA or charB, give({ _, x -> x }), 'X')))
+        assertEquals('C' to emptyList<Char>(), success("ABC".asSequence(), chainl(charA or charB or charC, give({ _, x -> x }), 'X')))
+        assertEquals('b' to listOf('C'), success("BAAAABC".asSequence(), chainl(charA or charB, give({ x, _ -> x.toLowerCase() }), 'X')))
+        assertEquals(3 to emptyList<Char>(), success("0+1+2".asSequence(), chainl(pNum(), pOp(), 0)))
+        assertEquals(-7 to emptyList<Char>(), success("0+1-2+3-9".asSequence(), chainl(pNum(), pOp(), 0)))
+        assertEquals('X' to "BA".toList(), success("BA".asSequence(), chainl(charA, give({ _, x -> x }), 'X')))
+    }
+
+    @Test
+    fun chainr1() {
+        assertEquals('A' to emptyList<Char>(), success("A".asSequence(), chainr1(charA, give({ _, x -> x }))))
+        assertEquals('B' to listOf('C'), success("ABC".asSequence(), chainr1(charA or charB, give({ _, x -> x }))))
+        assertEquals('C' to emptyList<Char>(), success("ABC".asSequence(), chainr1(charA or charB or charC, give({ _, x -> x }))))
+        assertEquals('b' to listOf('C'), success("BAAAABC".asSequence(), chainr1(charA or charB, give({ x, _ -> x.toLowerCase() }))))
+        assertEquals(3 to emptyList<Char>(), success("0+1+2".asSequence(), chainr1(pNum(), pOp())))
+        assertEquals(5 to emptyList<Char>(), success("0+1-2+3-9".asSequence(), chainr1(pNum(), pOp())))
+        assertEquals("Expecting 'A' but 'B' was found.", failure("BA".asSequence(), chainr1(charA, give({ _, x -> x }))))
+    }
+
+    @Test
+    fun chainr() {
+        assertEquals('A' to emptyList<Char>(), success("A".asSequence(), chainr(charA, give({ _, x -> x }), 'X')))
+        assertEquals('B' to listOf('C'), success("ABC".asSequence(), chainr(charA or charB, give({ _, x -> x }), 'X')))
+        assertEquals('C' to emptyList<Char>(), success("ABC".asSequence(), chainr(charA or charB or charC, give({ _, x -> x }), 'X')))
+        assertEquals('b' to listOf('C'), success("BAAAABC".asSequence(), chainr(charA or charB, give({ x, _ -> x.toLowerCase() }), 'X')))
+        assertEquals(3 to emptyList<Char>(), success("0+1+2".asSequence(), chainr(pNum(), pOp(), 0)))
+        assertEquals(5 to emptyList<Char>(), success("0+1-2+3-9".asSequence(), chainr(pNum(), pOp(), 0)))
+        assertEquals('X' to "BA".toList(), success("BA".asSequence(), chainr(charA, give({ _, x -> x }), 'X')))
+    }
+
+
+    @Test
+    fun bind() {
+        run {
+            fun tlc(ch: Char): Parser<Char, Char> {
+                return give(ch.toLowerCase())
+            }
+            assertEquals('a' to "BC".toList(), success("ABC".asSequence(),
+                    charA bind { x: Char -> tlc(x) }))
+        }
+        run {
+            fun tlc(ch: Char): Parser<Char, Char> {
+                return give(ch.toLowerCase())
+            }
+            assertEquals("Expecting 'C' but 'B' was found.", failure("ABC".asSequence(),
+                    (charA left charC) bind { x: Char -> tlc(x) }))
+        }
+        run {
+            fun tlc(ch: Char): Parser<Char, Char> {
+                return charA right give(ch.toLowerCase())
+            }
+            assertEquals("Expecting 'A' but 'B' was found.", failure("ACBC".asSequence(),
+                    (charA left charC) bind { x: Char -> tlc(x) }))
+        }
+        run {
+            fun tlc(ch: Char): Parser<Char, Char> {
+                return charA right give(ch.toLowerCase())
+            }
+            assertEquals("Expecting 'A' but 'B' was found.", failure("ABC".asSequence(),
+                    charA bind { x: Char -> tlc(x) }))
+        }
+    }
+
+    @Test
     fun or() {
-        assertEquals('A' to listOf('B'), success("AB".asSequence(),charA or charB))
-        assertEquals('B' to listOf('C'), success("BC".asSequence(),charA or charB))
+        assertEquals('A' to listOf('B'), success("AB".asSequence(), charA or charB))
+        assertEquals('B' to listOf('C'), success("BC".asSequence(), charA or charB))
         assertEquals('A' to emptyList<Char>(), success("A".asSequence(), charA or charB))
-        assertEquals('A' to emptyList<Char>(), success("A".asSequence(),charB or charA))
-        assertEquals('C' to emptyList<Char>(), success("C".asSequence(),charA or charB or charC))
+        assertEquals('A' to emptyList<Char>(), success("A".asSequence(), charB or charA))
+        assertEquals('C' to emptyList<Char>(), success("C".asSequence(), charA or charB or charC))
         assertEquals("Expecting one of 'A','B' but '' was found.", failure("".asSequence(), charA or charB))
         assertEquals("Expecting 'C' but 'B' was found.", failure("AB".asSequence(), (charA and charC) or charB))
         assertEquals("Expecting one of 'A','B' but 'C' was found.", failure("C".asSequence(), charA or charB))
@@ -228,11 +306,11 @@ class CombinatorTest {
 
     @Test
     fun either() {
-        assertEquals(Either.left('A') to listOf('B'), success("AB".asSequence(),charA either charB))
-        assertEquals(Either.right('B') to listOf('C'), success("BC".asSequence(),charA either charB))
+        assertEquals(Either.left('A') to listOf('B'), success("AB".asSequence(), charA either charB))
+        assertEquals(Either.right('B') to listOf('C'), success("BC".asSequence(), charA either charB))
         assertEquals(Either.left('A') to emptyList<Char>(), success("A".asSequence(), charA either charB))
-        assertEquals(Either.right('A') to emptyList<Char>(), success("A".asSequence(),charB either charA))
-        assertEquals(Either.right('C') to emptyList<Char>(), success("C".asSequence(),charA either charB either charC))
+        assertEquals(Either.right('A') to emptyList<Char>(), success("A".asSequence(), charB either charA))
+        assertEquals(Either.right('C') to emptyList<Char>(), success("C".asSequence(), charA either charB either charC))
         assertEquals("Expecting one of 'A','B' but '' was found.", failure("".asSequence(), charA either charB))
         assertEquals("Expecting 'C' but 'B' was found.", failure("AB".asSequence(), (charA and charC) either charB))
         assertEquals("Expecting one of 'A','B' but 'C' was found.", failure("C".asSequence(), charA either charB))
