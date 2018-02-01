@@ -37,6 +37,30 @@ class UnexpectedTokenException : ParserException {
     }
 }
 
+class UnexpectedEndOfInputException: ParserException {
+    private val tokens: List<String>
+
+    constructor(vararg tokens: String) : super(null) {
+        this.tokens = tokens.toList()
+    }
+
+    constructor(tokens: List<String>) : super(null) {
+        this.tokens = tokens
+    }
+
+    override val message: String?
+        get() = when(tokens.size) {
+            0 -> "Unexpected end of input was found."
+            1 -> "Expecting '${tokens[0]}' but end of input was found."
+            else -> "Expecting one of ${tokens.joinToString(",") { "'$it'" }} but end of input was found."
+        }
+
+    override fun combine(exception: ParserException) = when (exception) {
+        is UnexpectedEndOfInputException -> UnexpectedEndOfInputException(this.tokens + exception.tokens)
+        else -> super.combine(exception)
+    }
+}
+
 operator fun ParserException.plus(exception: ParserException) = this.combine(exception)
 
 typealias ParserResult<T, R> = Pair<Either<ParserException, R>, Sequence<T>>
@@ -50,17 +74,3 @@ fun <T, R, S> ParserResult<T, R>.mapResult(transform: (R) -> S): ParserResult<T,
 }
 
 typealias Parser<T, R> = (tokens: Sequence<T>) -> ParserResult<T, R>
-
-/**
- * Hand in the result without consuming anything (monadic return).
- */
-fun <T, R> give(value: R): Parser<T, R> = { tokens: Sequence<T> -> Either.right(value) to tokens }
-
-fun <T> token(token: T) = { tokens: Sequence<T> ->
-    if (tokens.firstOrNull() == token)
-        Either.right(token) to tokens.drop(1)
-    else {
-        val found = if (tokens.firstOrNull() != null) tokens.firstOrNull().toString() else END_OF_SOURCE
-        Either.left(UnexpectedTokenException(token.toString(), found = found)) to tokens
-    }
-}

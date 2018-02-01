@@ -3,16 +3,22 @@ package combinator
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import parser.Parser
-import parser.give
 import tools.Either
 
 class CombinatorTest {
+    @Test
+    fun anyToken() {
+        assertEquals('A' to "".toList(), success("A".asSequence(), anyToken<Char>()))
+        assertEquals('C' to "BA".toList(), success("CBA".asSequence(), anyToken<Char>()))
+        assertEquals("Unexpected end of input was found.", failure("".asSequence(), anyToken<Char>()))
+    }
+
     @Test
     fun lookAhead() {
         assertEquals('A' to "AB".toList(), success("AB".asSequence(), lookAhead(charA)))
         assertEquals(('A' to 'B') to "AB".toList(), success("AB".asSequence(), lookAhead(charA and charB)))
         assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), lookAhead(charA)))
-        assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(), lookAhead(charA and charB)))
+        assertEquals("Expecting 'B' but end of input was found.", failure("A".asSequence(), lookAhead(charA and charB)))
     }
 
     @Test
@@ -20,7 +26,7 @@ class CombinatorTest {
         assertEquals('A' to "B".toList(), success("AB".asSequence(), attempt(charA)))
         assertEquals(('A' to 'B') to emptyList<Char>(), success("AB".asSequence(), attempt(charA and charB)))
         assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), attempt(charA)))
-        assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(), attempt(charA and charB)))
+        assertEquals("Expecting 'B' but end of input was found.", failure("A".asSequence(), attempt(charA and charB)))
     }
 
     @Test
@@ -91,7 +97,7 @@ class CombinatorTest {
         assertEquals(('A' to 'B') to emptyList<Char>(), success("AB".asSequence(), charA and charB))
         assertEquals(('A' to 'B') to listOf('C'), success("ABC".asSequence(), charA and charB))
         assertEquals((('A' to 'B') to 'C') to emptyList<Char>(), success("ABC".asSequence(), charA and charB and charC))
-        assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(), charA and charB))
+        assertEquals("Expecting 'B' but end of input was found.", failure("A".asSequence(), charA and charB))
         assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), charA and charB))
         assertEquals("Expecting 'B' but 'C' was found.", failure("AC".asSequence(), charA and charB))
     }
@@ -101,7 +107,7 @@ class CombinatorTest {
         assertEquals('A' to emptyList<Char>(), success("AB".asSequence(), charA left charB))
         assertEquals('A' to listOf('C'), success("ABC".asSequence(), charA left charB))
         assertEquals('A' to emptyList<Char>(), success("ABC".asSequence(), charA left charB left charC))
-        assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(), charA left charB))
+        assertEquals("Expecting 'B' but end of input was found.", failure("A".asSequence(), charA left charB))
         assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), charA left charB))
         assertEquals("Expecting 'B' but 'C' was found.", failure("AC".asSequence(), charA left charB))
     }
@@ -111,7 +117,7 @@ class CombinatorTest {
         assertEquals('B' to emptyList<Char>(), success("AB".asSequence(), charA right charB))
         assertEquals('B' to listOf('C'), success("ABC".asSequence(), charA right charB))
         assertEquals('C' to emptyList<Char>(), success("ABC".asSequence(), charA right charB right charC))
-        assertEquals("Expecting 'B' but '' was found.", failure("A".asSequence(), charA right charB))
+        assertEquals("Expecting 'B' but end of input was found.", failure("A".asSequence(), charA right charB))
         assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), charA right charB))
         assertEquals("Expecting 'B' but 'C' was found.", failure("AC".asSequence(), charA right charB))
     }
@@ -299,7 +305,7 @@ class CombinatorTest {
         assertEquals('A' to emptyList<Char>(), success("A".asSequence(), charA or charB))
         assertEquals('A' to emptyList<Char>(), success("A".asSequence(), charB or charA))
         assertEquals('C' to emptyList<Char>(), success("C".asSequence(), charA or charB or charC))
-        assertEquals("Expecting one of 'A','B' but '' was found.", failure("".asSequence(), charA or charB))
+        assertEquals("Expecting one of 'A','B' but end of input was found.", failure("".asSequence(), charA or charB))
         assertEquals("Expecting 'C' but 'B' was found.", failure("AB".asSequence(), (charA and charC) or charB))
         assertEquals("Expecting one of 'A','B' but 'C' was found.", failure("C".asSequence(), charA or charB))
     }
@@ -311,7 +317,7 @@ class CombinatorTest {
         assertEquals(Either.left('A') to emptyList<Char>(), success("A".asSequence(), charA either charB))
         assertEquals(Either.right('A') to emptyList<Char>(), success("A".asSequence(), charB either charA))
         assertEquals(Either.right('C') to emptyList<Char>(), success("C".asSequence(), charA either charB either charC))
-        assertEquals("Expecting one of 'A','B' but '' was found.", failure("".asSequence(), charA either charB))
+        assertEquals("Expecting one of 'A','B' but end of input was found.", failure("".asSequence(), charA either charB))
         assertEquals("Expecting 'C' but 'B' was found.", failure("AB".asSequence(), (charA and charC) either charB))
         assertEquals("Expecting one of 'A','B' but 'C' was found.", failure("C".asSequence(), charA either charB))
     }

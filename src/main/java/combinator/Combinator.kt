@@ -3,6 +3,30 @@ package combinator
 import parser.*
 import tools.Either
 
+
+/**
+ * Hand in the result without consuming anything (monadic return).
+ */
+fun <T, R> give(value: R): Parser<T, R> = { tokens: Sequence<T> -> Either.right(value) to tokens }
+
+fun <T> token(token: T) = { tokens: Sequence<T> ->
+    when (tokens.firstOrNull()) {
+        null -> Either.left(UnexpectedEndOfInputException(token.toString())) to tokens
+        token -> Either.right(token) to tokens.drop(1)
+        else -> {
+            Either.left(UnexpectedTokenException(token.toString(), found = tokens.firstOrNull().toString())) to tokens
+        }
+    }
+}
+
+/**
+ * Accepts and returns any token.
+ */
+fun <T> anyToken() = { tokens: Sequence<T> ->
+    if (tokens.firstOrNull() != null) Either.right(tokens.first()) to tokens.drop(1)
+    else Either.left(UnexpectedEndOfInputException()) to tokens
+}
+
 /**
  * Implements mplus (<|>): it returns the result of the first parser if it runs successfully.
  * It returns the result of the second parser if the first parser fails without consuming any tokens.
