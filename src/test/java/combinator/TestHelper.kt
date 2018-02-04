@@ -65,4 +65,21 @@ fun <T, R> success(tokens: Sequence<T>, parser: Parser<T, R>) = parser(tokens).l
     (it.first as Either.Right).value to it.second.toList()
 }
 
-fun <T, R> failure(tokens: Sequence<T>, parser: Parser<T, R>) = parser(tokens).first.left()!!.message
+fun <T, R> failure(tokens: Sequence<T>, parser: Parser<T, R>) = parser(tokens).let {
+    val found = it.second.firstOrNull()
+    val exception = it.first.left()!!
+    when(exception){
+        is UnexpectedTokenFailure<*> -> if (exception.tokens.size == 1) {
+            "Expecting '${exception.tokens[0]}' but '${found ?: "end of input"}' was found."
+        } else {
+            "Expecting one of ${exception.tokens.joinToString(",") { "'$it'" }} but '${found ?: "end of input"}' was found."
+        }
+
+        is UnexpectedEndOfInputFailure<*> -> when(exception.tokens.size) {
+            0 -> "Unexpected 'end of input' was found."
+            1 -> "Expecting '${exception.tokens[0]}' but 'end of input' was found."
+            else -> "Expecting one of ${exception.tokens.joinToString(",") { "'$it'" }} but 'end of input' was found."
+        }
+        is UnexpectedFailure -> "Unexpected ${exception.message}"
+    }
+}

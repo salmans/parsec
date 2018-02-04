@@ -9,13 +9,13 @@ import tools.Either
  */
 fun <T, R> give(value: R): Parser<T, R> = { tokens: Sequence<T> -> Either.right(value) to tokens }
 
-fun <T, R> parserException(exception: ParserException): Parser<T, R> = { tokens: Sequence<T> -> Either.left(exception) to tokens }
+fun <T, R> parserException(failure: ParserFailure): Parser<T, R> = { tokens: Sequence<T> -> Either.left(failure) to tokens }
 
 fun <T> token(token: T) = { tokens: Sequence<T> ->
     when (tokens.firstOrNull()) {
-        null -> Either.left(UnexpectedEndOfInputException(token)) to tokens
+        null -> Either.left(UnexpectedEndOfInputFailure(token)) to tokens
         token -> Either.right(token) to tokens.drop(1)
-        else -> Either.left(UnexpectedTokenException(token, found = tokens.firstOrNull().toString())) to tokens
+        else -> Either.left(UnexpectedTokenFailure(token)) to tokens
     }
 }
 
@@ -24,7 +24,7 @@ fun <T> token(token: T) = { tokens: Sequence<T> ->
  */
 fun <T> anyToken() = { tokens: Sequence<T> ->
     if (tokens.firstOrNull() != null) Either.right(tokens.first()) to tokens.drop(1)
-    else Either.left(UnexpectedEndOfInputException<T>()) to tokens
+    else Either.left(UnexpectedEndOfInputFailure<T>()) to tokens
 }
 
 /**
@@ -32,7 +32,7 @@ fun <T> anyToken() = { tokens: Sequence<T> ->
  */
 fun <T, R> notFollowedBy(parser: Parser<T, R>) =
         attempt((attempt(parser)) { r ->
-            parserException<T, R>(UnexpectedException(r.toString()))
+            parserException<T, R>(UnexpectedFailure("'${r.toString()}'"))
         } or give(Unit))
 
 /**
@@ -51,14 +51,20 @@ infix fun <T, R> Parser<T, R>.or(parser: Parser<T, R>) = { tokens: Sequence<T> -
             if (fts == tokens) {
                 val (sr, sts) = parser(tokens)
                 when (sr) {
-                    is Either.Left -> Either.Left(fr.value + sr.value) to tokens
+                    is Either.Left -> {
+                        if (sts == tokens) {
+                            Either.Left(fr.value + sr.value) to tokens
+                        } else {
+                            sr to sts
+                        }
+                    }
                     is Either.Right -> sr to sts
                 }
             } else {
                 fr to fts
             }
         }
-        is Either.Right -> Either.right(fr.value) to fts
+        is Either.Right -> fr to fts
     }
 }
 
@@ -86,7 +92,7 @@ fun <T, R> attempt(parser: Parser<T, R>) = { tokens: Sequence<T> ->
  * It fails if `parser` fails after consuming tokens.
  */
 fun <T, R> many(parser: Parser<T, R>) = { tokens: Sequence<T> ->
-    var exception: ParserException? = null
+    var failure: ParserFailure? = null
     var result = emptyList<R>()
     var toks = tokens
 
@@ -94,7 +100,7 @@ fun <T, R> many(parser: Parser<T, R>) = { tokens: Sequence<T> ->
         val (r, ts) = parser(toks)
         if (r is Either.Left) {
             if (ts != toks) {
-                exception = r.value
+                failure = r.value
                 toks = ts
             }
             break
@@ -104,8 +110,8 @@ fun <T, R> many(parser: Parser<T, R>) = { tokens: Sequence<T> ->
         }
     }
 
-    if (exception != null) {
-        Either.left(exception) to toks
+    if (failure != null) {
+        Either.left(failure) to toks
     } else {
         Either.right(result) to toks
     }
@@ -153,22 +159,22 @@ fun <T, R, E> manyTill(parser: Parser<T, R>, end: Parser<T, E>) = run {
  * if any of the parsers fail after consuming some tokens.
  */
 fun <T, R> choice(parsers: List<Parser<T, R>>) = { tokens: Sequence<T> ->
-    var exception: Pair<ParserException, Sequence<T>>? = null
+    var failure: ParserFailure? = null
     if (parsers.isNotEmpty()) {
         var successful: ParserResult<T, R>? = null
         for (it in parsers) {
             val parsed = it(tokens)
             val parsedResult = parsed.first
             if (parsedResult is Either.Left) {
-                exception = (exception?.first?.plus(parsedResult.value) ?: parsedResult.value) to parsed.second
+                failure = failure?.plus(parsedResult.value) ?: parsedResult.value
             } else if (parsedResult is Either.Right) {
                 successful = parsed
                 break
             }
         }
-        if (successful != null) successful else exception!!.let { Either.left(it.first) to it.second }
+        if (successful != null) successful else Either.left(failure!!) to tokens
     } else {
-        Either.left(ParserException("Cannot apply the `choice` an empty list of parsers.")) to tokens
+        throw RuntimeException("Cannot apply the `choice` an empty list of parsers.")
     }
 }
 
@@ -177,7 +183,7 @@ fun <T, R> choice(parsers: List<Parser<T, R>>) = { tokens: Sequence<T> ->
  */
 fun <T, R> count(n: Int, parser: Parser<T, R>) = { tokens: Sequence<T> ->
     var result = emptyList<R>()
-    var exception: Pair<ParserException, Sequence<T>>? = null
+    var failure: Pair<ParserFailure, Sequence<T>>? = null
     var toks = tokens
 
     if (n > 0) {
@@ -185,7 +191,7 @@ fun <T, R> count(n: Int, parser: Parser<T, R>) = { tokens: Sequence<T> ->
             val parsed = parser(toks)
             val parsedResult = parsed.first
             if (parsedResult is Either.Left) {
-                exception = parsedResult.value to parsed.second
+                failure = parsedResult.value to parsed.second
                 break
             } else if (parsedResult is Either.Right) {
                 toks = parsed.second
@@ -193,10 +199,10 @@ fun <T, R> count(n: Int, parser: Parser<T, R>) = { tokens: Sequence<T> ->
             }
         }
 
-        if (exception == null) {
+        if (failure == null) {
             Either.right(result) to toks
         } else {
-            exception.let { Either.left(it.first) to it.second }
+            failure.let { Either.left(it.first) to it.second }
         }
     } else {
         Either.right(emptyList<R>()) to tokens
@@ -332,15 +338,12 @@ infix fun <T, F, S> Parser<T, F>.and(parser: Parser<T, S>): Parser<T, Pair<F, S>
     val firstParsed = this(tokens)
     val (fr, fts) = firstParsed
     when (fr) {
-        is Either.Left -> fr to firstParsed.second
+        is Either.Left -> fr to fts
         is Either.Right -> {
-            val secondParsed = parser(fts)
-            val (sr, sts) = secondParsed
+            val (sr, sts) = parser(fts)
             when (sr) {
-                is Either.Left -> sr to secondParsed.second
-                is Either.Right -> {
-                    Either.right(fr.value to sr.value) to sts
-                }
+                is Either.Left -> sr to sts
+                is Either.Right -> Either.right(fr.value to sr.value) to sts
             }
         }
     }
