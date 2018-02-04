@@ -2,29 +2,27 @@ package parser
 
 import tools.Either
 
-const val END_OF_SOURCE = ""
-
-open class ParserException(message: String?) : Exception(message) {
+open class ParserException(open var message: String?) {
     open fun combine(exception: ParserException): ParserException {
         return this
     }
 }
 
-class UnexpectedTokenException : ParserException {
-    private val tokens: List<String>
-    private val found: String
+class UnexpectedTokenException<T> : ParserException {
+    val tokens: List<T>
+    val found: T
 
-    constructor(vararg tokens: String, found: String) : super(null) {
+    constructor(vararg tokens: T, found: T) : super(null) {
         this.tokens = tokens.toList()
         this.found = found
     }
 
-    constructor(tokens: List<String>, found: String) : super(null) {
+    constructor(tokens: List<T>, found: T) : super(null) {
         this.tokens = tokens
         this.found = found
     }
 
-    override val message: String?
+    override var message: String? = null
         get() = if (tokens.size == 1) {
             "Expecting '${tokens[0]}' but '$found' was found."
         } else {
@@ -32,23 +30,23 @@ class UnexpectedTokenException : ParserException {
         }
 
     override fun combine(exception: ParserException) = when (exception) {
-        is UnexpectedTokenException -> UnexpectedTokenException((this.tokens + exception.tokens).distinct(), this.found)
+        is UnexpectedTokenException<*> -> UnexpectedTokenException((this.tokens + exception.tokens).distinct(), this.found)
         else -> super.combine(exception)
     }
 }
 
-class UnexpectedEndOfInputException: ParserException {
-    private val tokens: List<String>
+class UnexpectedEndOfInputException<T>: ParserException {
+    val tokens: List<T>
 
-    constructor(vararg tokens: String) : super(null) {
+    constructor(vararg tokens: T) : super(null) {
         this.tokens = tokens.toList()
     }
 
-    constructor(tokens: List<String>) : super(null) {
+    constructor(tokens: List<T>) : super(null) {
         this.tokens = tokens
     }
 
-    override val message: String?
+    override var message: String? = null
         get() = when(tokens.size) {
             0 -> "Unexpected end of input was found."
             1 -> "Expecting '${tokens[0]}' but end of input was found."
@@ -56,7 +54,7 @@ class UnexpectedEndOfInputException: ParserException {
         }
 
     override fun combine(exception: ParserException) = when (exception) {
-        is UnexpectedEndOfInputException -> UnexpectedEndOfInputException((this.tokens + exception.tokens).distinct())
+        is UnexpectedEndOfInputException<*> -> UnexpectedEndOfInputException((this.tokens + exception.tokens).distinct())
         else -> super.combine(exception)
     }
 }

@@ -13,11 +13,9 @@ fun <T, R> parserException(exception: ParserException): Parser<T, R> = { tokens:
 
 fun <T> token(token: T) = { tokens: Sequence<T> ->
     when (tokens.firstOrNull()) {
-        null -> Either.left(UnexpectedEndOfInputException(token.toString())) to tokens
+        null -> Either.left(UnexpectedEndOfInputException(token)) to tokens
         token -> Either.right(token) to tokens.drop(1)
-        else -> {
-            Either.left(UnexpectedTokenException(token.toString(), found = tokens.firstOrNull().toString())) to tokens
-        }
+        else -> Either.left(UnexpectedTokenException(token, found = tokens.firstOrNull().toString())) to tokens
     }
 }
 
@@ -26,7 +24,7 @@ fun <T> token(token: T) = { tokens: Sequence<T> ->
  */
 fun <T> anyToken() = { tokens: Sequence<T> ->
     if (tokens.firstOrNull() != null) Either.right(tokens.first()) to tokens.drop(1)
-    else Either.left(UnexpectedEndOfInputException()) to tokens
+    else Either.left(UnexpectedEndOfInputException<T>()) to tokens
 }
 
 /**
@@ -139,8 +137,8 @@ fun <T, R> skipMany1(parser: Parser<T, R>) = { tokens: Sequence<T> ->
  */
 fun <T, R, E> manyTill(parser: Parser<T, R>, end: Parser<T, E>) = { tokens: Sequence<T> ->
     fun scan(): Parser<T, List<R>> {
-        return (end bind { _ -> give<T, List<R>>(emptyList())}) or
-                (parser bind {x -> scan() bind {xs -> give<T, List<R>>(listOf(x) + xs)}})
+        return (end bind { _ -> give<T, List<R>>(emptyList()) }) or
+                (parser bind { x -> scan() bind { xs -> give<T, List<R>>(listOf(x) + xs) } })
     }
 
     scan()(tokens)
@@ -285,9 +283,9 @@ fun <T, R, S> endBy(parser: Parser<T, R>, sep: Parser<T, S>) = { tokens: Sequenc
 }
 
 /**
- * Parses `parser` one or many times, separated and ended by `sep` and returns the results of parsing `parser` in a list.
+ * Parses `parser` one or many times, separated and optionally ended by `sep` and returns the results of parsing `parser` in a list.
  */
-fun <T, R, S> sepEndBy1(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List<R>> = { tokens: Sequence<T> ->
+fun <T, R, S> sepEndBy1(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List<R>> = run {
     // Kotlin compiler isn't handling intertwined lambdas nicely; it needs explicit type information:
     fun combine(x: R, xs: List<R>): Parser<T, List<R>> {
         return give(listOf(x) + xs)
@@ -296,11 +294,11 @@ fun <T, R, S> sepEndBy1(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List
     fun help(x: R): Parser<T, List<R>> {
         return sep right sepEndBy(parser, sep) bind { xs: List<R> -> combine(x, xs) }
     }
-    (parser bind { x: R -> help(x) or give(listOf(x)) })(tokens)
+    (parser bind { x: R -> help(x) or give(listOf(x)) })
 }
 
 /**
- * Parses `parser` zero or many times, separated and ended by `sep` and returns the results of parsing `parser` in a list.
+ * Parses `parser` zero or many times, separated and optionally ended by `sep` and returns the results of parsing `parser` in a list.
  */
 fun <T, R, S> sepEndBy(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List<R>> = sepEndBy1(parser, sep) or give(emptyList())
 
@@ -308,11 +306,11 @@ fun <T, R, S> sepEndBy(parser: Parser<T, R>, sep: Parser<T, S>): Parser<T, List<
  * Applies `parser` one or more time, separated by `operator` and applies left associative `operator` to chain the result.
  * Use this function to eliminate left recursion.
  */
-fun <T, R> chainl1(parser: Parser<T, R>, operator: Parser<T, (R, R) -> R>): Parser<T, R> = { tokens: Sequence<T> ->
+fun <T, R> chainl1(parser: Parser<T, R>, operator: Parser<T, (R, R) -> R>): Parser<T, R> = run {
     fun rest(x: R): Parser<T, R> {
         return (operator bind { f -> parser bind { y -> rest(f(x, y)) } }) or give(x)
     }
-    (parser bind { x -> rest(x) })(tokens)
+    (parser bind { x -> rest(x) })
 }
 
 /**
@@ -376,17 +374,10 @@ infix fun <T, F, S> Parser<T, F>.bind(parser: (F) -> Parser<T, S>): Parser<T, S>
     }
 }
 
-infix fun <T, F, S> Parser<T, F>.left(parser: Parser<T, S>): Parser<T, F> = { tokens: Sequence<T> ->
-    (this and parser)(tokens).let {
-        it.mapResult { it.first }
-    }
-}
+infix fun <T, F, S> Parser<T, F>.left(parser: Parser<T, S>): Parser<T, F> = (this and parser) bind { give<T, F>(it.first) }
 
-infix fun <T, F, S> Parser<T, F>.right(parser: Parser<T, S>): Parser<T, S> = { tokens: Sequence<T> ->
-    (this and parser)(tokens).let {
-        it.mapResult { it.second }
-    }
-}
+infix fun <T, F, S> Parser<T, F>.right(parser: Parser<T, S>): Parser<T, S> = (this and parser) bind { give<T, S>(it.second) }
+
 
 infix fun <T, F, S> Parser<T, F>.either(parser: Parser<T, S>) = { tokens: Sequence<T> ->
     val (fr, fts) = this(tokens)
