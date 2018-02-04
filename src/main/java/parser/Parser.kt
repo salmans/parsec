@@ -65,12 +65,4 @@ operator fun ParserException.plus(exception: ParserException) = this.combine(exc
 
 typealias ParserResult<T, R> = Pair<Either<ParserException, R>, Sequence<T>>
 
-fun <T, R, S> ParserResult<T, R>.mapResult(transform: (R) -> S): ParserResult<T, S> {
-    val parsedResult = this.first
-    return when (parsedResult) {
-        is Either.Left -> Either.Left(parsedResult.value) to this.second
-        is Either.Right -> Either.Right(transform(parsedResult.value)) to this.second
-    }
-}
-
 typealias Parser<T, R> = (tokens: Sequence<T>) -> ParserResult<T, R>

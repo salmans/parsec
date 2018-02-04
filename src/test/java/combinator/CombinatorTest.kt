@@ -296,28 +296,28 @@ class CombinatorTest {
                 return give(ch.toLowerCase())
             }
             assertEquals('a' to "BC".toList(), success("ABC".asSequence(),
-                    charA bind { x: Char -> tlc(x) }))
+                    charA { x: Char -> tlc(x) }))
         }
         run {
             fun tlc(ch: Char): Parser<Char, Char> {
                 return give(ch.toLowerCase())
             }
             assertEquals("Expecting 'C' but 'B' was found.", failure("ABC".asSequence(),
-                    (charA left charC) bind { x: Char -> tlc(x) }))
+                    (charA left charC) { x: Char -> tlc(x) }))
         }
         run {
             fun tlc(ch: Char): Parser<Char, Char> {
                 return charA right give(ch.toLowerCase())
             }
             assertEquals("Expecting 'A' but 'B' was found.", failure("ACBC".asSequence(),
-                    (charA left charC) bind { x: Char -> tlc(x) }))
+                    (charA left charC) { x: Char -> tlc(x) }))
         }
         run {
             fun tlc(ch: Char): Parser<Char, Char> {
                 return charA right give(ch.toLowerCase())
             }
             assertEquals("Expecting 'A' but 'B' was found.", failure("ABC".asSequence(),
-                    charA bind { x: Char -> tlc(x) }))
+                    charA { x: Char -> tlc(x) }))
         }
     }
 
