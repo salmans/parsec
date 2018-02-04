@@ -30,6 +30,18 @@ class CombinatorTest {
     }
 
     @Test
+    fun notFollowedBy() {
+        assertEquals(Unit to "B".toList(), success("B".asSequence(), notFollowedBy(charA)))
+        assertEquals("Unexpected 'A' was found.", failure("A".asSequence(), notFollowedBy(charA)))
+    }
+
+    @Test
+    fun eof() {
+        assertEquals(Unit to emptyList<Char>(), success("".asSequence(), eof<Char>()))
+        assertEquals("Unexpected 'A' was found.", failure("A".asSequence(), eof<Char>()))
+    }
+
+    @Test
     fun many() {
         assertEquals(listOf('A') to listOf('B'), success("AB".asSequence(), many(charA)))
         assertEquals(listOf('A', 'A') to "BC".toList(), success("AABC".asSequence(), many(charA)))
@@ -45,6 +57,17 @@ class CombinatorTest {
         assertEquals(listOf('A', 'A', 'A', 'A', 'A') to "BC".toList(), success("AAAAABC".asSequence(), many1(charA)))
         assertEquals("Expecting 'A' but 'B' was found.", failure("BC".asSequence(), many1(charA)))
         assertEquals("Expecting 'B' but 'C' was found.", failure("ABAC".asSequence(), many1(charA and charB)))
+    }
+
+    @Test
+    fun manyTill() {
+        assertEquals(listOf('A') to emptyList<Char>(), success("AB".asSequence(), manyTill(charA, charB)))
+        assertEquals(listOf('A', 'A') to "C".toList(), success("AABC".asSequence(), manyTill(charA, charB)))
+        assertEquals(listOf('A', 'A', 'A', 'A', 'A') to emptyList<Char>(), success("AAAAABC".asSequence(), manyTill(charA, charB and charC)))
+        assertEquals(listOf('B', 'B') to emptyList<Char>(), success("ABABC".asSequence(), manyTill(charA right charB, charC)))
+        assertEquals("Expecting one of 'C','B' but 'A' was found.", failure("ABAC".asSequence(), manyTill(charA and charB, charC)))
+        assertEquals("Expecting one of 'C','A' but 'A' was found.", failure("AAAAABC".asSequence(), manyTill(charA, charC)))
+        assertEquals("Expecting 'B' but 'A' was found.", failure("AAAAA".asSequence(), manyTill(charA, charB)))
     }
 
     @Test

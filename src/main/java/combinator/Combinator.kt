@@ -9,6 +9,8 @@ import tools.Either
  */
 fun <T, R> give(value: R): Parser<T, R> = { tokens: Sequence<T> -> Either.right(value) to tokens }
 
+fun <T, R> parserException(exception: ParserException): Parser<T, R> = { tokens: Sequence<T> -> Either.left(exception) to tokens }
+
 fun <T> token(token: T) = { tokens: Sequence<T> ->
     when (tokens.firstOrNull()) {
         null -> Either.left(UnexpectedEndOfInputException(token.toString())) to tokens
@@ -26,6 +28,17 @@ fun <T> anyToken() = { tokens: Sequence<T> ->
     if (tokens.firstOrNull() != null) Either.right(tokens.first()) to tokens.drop(1)
     else Either.left(UnexpectedEndOfInputException()) to tokens
 }
+
+/**
+ * Fails if `parser` succeeds, without consuming any tokens.
+ */
+fun <T, R> notFollowedBy(parser: Parser<T, R>) =
+        attempt(attempt(parser) bind { r -> parserException<T, R>(UnexpectedException(r.toString())) } or give(Unit))
+
+/**
+ * Succeeds at the end of input.
+ */
+fun <T> eof() = notFollowedBy(anyToken<T>())
 
 /**
  * Implements mplus (<|>): it returns the result of the first parser if it runs successfully.
@@ -118,6 +131,19 @@ fun <T, R> skipMany(parser: Parser<T, R>) = { tokens: Sequence<T> ->
  */
 fun <T, R> skipMany1(parser: Parser<T, R>) = { tokens: Sequence<T> ->
     (parser and many(parser))(tokens).mapResult { Unit }
+}
+
+/**
+ * Applies `parser` zero or many times until `end` succeeds and returns the results of `parser` in a list.
+ * For instance, this combinator can be used to parse comments.
+ */
+fun <T, R, E> manyTill(parser: Parser<T, R>, end: Parser<T, E>) = { tokens: Sequence<T> ->
+    fun scan(): Parser<T, List<R>> {
+        return (end bind { _ -> give<T, List<R>>(emptyList())}) or
+                (parser bind {x -> scan() bind {xs -> give<T, List<R>>(listOf(x) + xs)}})
+    }
+
+    scan()(tokens)
 }
 
 /**

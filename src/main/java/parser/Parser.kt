@@ -32,7 +32,7 @@ class UnexpectedTokenException : ParserException {
         }
 
     override fun combine(exception: ParserException) = when (exception) {
-        is UnexpectedTokenException -> UnexpectedTokenException(this.tokens + exception.tokens, this.found)
+        is UnexpectedTokenException -> UnexpectedTokenException((this.tokens + exception.tokens).distinct(), this.found)
         else -> super.combine(exception)
     }
 }
@@ -56,10 +56,12 @@ class UnexpectedEndOfInputException: ParserException {
         }
 
     override fun combine(exception: ParserException) = when (exception) {
-        is UnexpectedEndOfInputException -> UnexpectedEndOfInputException(this.tokens + exception.tokens)
+        is UnexpectedEndOfInputException -> UnexpectedEndOfInputException((this.tokens + exception.tokens).distinct())
         else -> super.combine(exception)
     }
 }
+
+class UnexpectedException(unexpected: String) : ParserException("Unexpected '$unexpected' was found.")
 
 operator fun ParserException.plus(exception: ParserException) = this.combine(exception)
 
